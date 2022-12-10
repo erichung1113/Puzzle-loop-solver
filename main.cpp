@@ -1,3 +1,6 @@
+//a.out < ./TestCase/S1-input.txt && a.out < ./TestCase/S2-input.txt && a.out < ./TestCase/S3-input.txt && a.out < ./TestCase/S4-input.txt && a.out < ./TestCase/S5-input.txt
+
+
 #include <bits/stdc++.h>
 using namespace std;
 #pragma GCC optimize("O2","unroll-loops")
@@ -12,6 +15,7 @@ const int MAXN=10;
 int dx[4]={0,1,0,-1};
 int dy[4]={1,0,-1,0};
 //         R D L U
+
 #define TopLine i,j,i,j+1
 #define DownLine i+1,j,i+1,j+1
 #define LeftLine i,j,i+1,j
@@ -30,54 +34,57 @@ int dy[4]={1,0,-1,0};
 #define LeftDownLine i+1,j,i+2,j
 
 int Map[MAXN][MAXN];
+int usedEdgeCnt[MAXN][MAXN];
 bool usedNode[MAXN][MAXN];
+//Edge[x1][x2][y1][y2] means (x1,y1)->(x2,y2)
 bool linkedEdge[MAXN][MAXN][MAXN][MAXN];  
 bool bannedEdge[MAXN][MAXN][MAXN][MAXN];
-int usedEdgeCnt[MAXN][MAXN];
-//Edge[x1][x2][y1][y2] : (x1,y1)->(x2,y2)
+
 int n,m,Time;
-pii StartPoint,curPos,nxtPos;
+pii StartPoint,prePos,curPos;
 
 typedef struct cmd{
     int time,type,x1,y1,x2,y2;
 }cmd;
-stack<cmd> command; // use to restore linked or banned edge
+stack<cmd> command; //restore modified edge
 
-bool CheckBannedEdge(int x1,int y1,int x2,int y2){
+bool CheckBannedEdge(int x1,int y1,int x2,int y2){  //edge has been banned or not
     return bannedEdge[x1][y1][x2][y2] || bannedEdge[x2][y2][x1][y1];
 }
 bool CheckLinkedEdge(int x1,int y1,int x2,int y2){
     return linkedEdge[x1][y1][x2][y2] || linkedEdge[x2][y2][x1][y1];
 }
 
-bool goUp(int x,int y){
-    
-    if(mp(x-1,y)==nxtPos || CheckLinkedEdge(x,y,x-1,y)) return true;
-    if(CheckBannedEdge(x,y,x-1,y) || usedNode[x-1][y]) return false;
-    return true;
-}
-bool goDown(int x,int y){
-    if(mp(x+1,y)==nxtPos || CheckLinkedEdge(x,y,x+1,y)) return true;
-    if(CheckBannedEdge(x,y,x+1,y) || usedNode[x+1][y]) return false;
-    return true;
+bool goRight(int x,int y){ 
+    if(CheckBannedEdge(x,y,x,y+1)) return false;
+    if(CheckLinkedEdge(x,y,x,y+1)) return true;
+    if(mp(x,y+1)==curPos) return true;  //.-(go right)->.(final point)--.--.--.......
+    return !usedNode[x][y+1];
 }
 bool goLeft(int x,int y){
-    if(mp(x,y-1)==nxtPos || CheckLinkedEdge(x,y,x,y-1)) return true;
-    if(CheckBannedEdge(x,y,x,y-1) || usedNode[x][y-1]) return false;
-    return true;
+    if(CheckBannedEdge(x,y,x,y-1)) return false;
+    if(CheckLinkedEdge(x,y,x,y-1)) return true;
+    if(mp(x,y-1)==curPos) return true;
+    return !usedNode[x][y-1];
 }
-bool goRight(int x,int y){
-    if(mp(x,y+1)==nxtPos || CheckLinkedEdge(x,y,x,y+1)) return true;
-    if(CheckBannedEdge(x,y,x,y+1) || usedNode[x][y+1]) return false;
-
-    return true;
+bool goUp(int x,int y){
+    if(CheckBannedEdge(x,y,x-1,y)) return false;
+    if(CheckLinkedEdge(x,y,x-1,y)) return true;
+    if(mp(x-1,y)==curPos) return true;
+    return !usedNode[x-1][y];
+}
+bool goDown(int x,int y){
+    if(CheckBannedEdge(x,y,x+1,y)) return false;
+    if(CheckLinkedEdge(x,y,x+1,y)) return true;
+    if(mp(x+1,y)==curPos) return true;
+    return !usedNode[x+1][y];
 }
 
 bool BanEdge(int x1,int y1,int x2,int y2){ 
     if(bannedEdge[x1][y1][x2][y2]) return false;  //banned already
     bannedEdge[x1][y1][x2][y2]=true;
     bannedEdge[x2][y2][x1][y1]=true;
-    command.push({Time,1,x1,y1,x2,y2});  //record what operation we do at Time
+    command.push({Time,1,x1,y1,x2,y2});  //record what operation we do at Time(Time is a variable)
     return true;  //banned successfully
 }
 
@@ -107,16 +114,15 @@ int CntBannedEdge(int i,int j){
 
 //mark = ban + link
 bool mark_edge_around_zero(){
-    //-------ban-------
-    /**
-     * . b .
-     * b 0 b
-     * . b .
-     */
+   
     bool change=false; 
     for(int i=1;i<=n;i++){
         for(int j=1;j<=m;j++){
             if(Map[i][j]==0){
+                //-------ban-------
+                // * . b .
+                // * b 0 b
+                // * . b .
                 change|=BanEdge(TopLine);
                 change|=BanEdge(DownLine);
                 change|=BanEdge(LeftLine);
@@ -132,60 +138,55 @@ bool mark_edge_around_one(){
     for(int i=1;i<=n;i++){
         for(int j=1;j<=m;j++){
             if(Map[i][j]==1){
-                //-------ban---------
-                if(CntlinkedEdge(i,j)==0){
-                    /**
-                     *   x
-                     * x . b .
-                     *   b 1
-                     *   .   .
-                    */
-                    if(!goUp(i,j) && !goLeft(i,j) && mp(i,j)!=nxtPos && mp(i,j)!=StartPoint){
-                        change|=BanEdge(TopLine);
-                        change|=BanEdge(LeftLine);
-                    }
-                    if(!goUp(i,j+1) && !goRight(i,j+1) && mp(i,j+1)!=nxtPos && mp(i,j+1)!=StartPoint){
-                        change|=BanEdge(TopLine);
-                        change|=BanEdge(RightLine);
-                    }
-                    if(!goDown(i+1,j+1) && !goRight(i+1,j+1) && mp(i+1,j+1)!=nxtPos && mp(i+1,j+1)!=StartPoint){
-                        change|=BanEdge(RightLine);
-                        change|=BanEdge(DownLine);
-                    }
-                    if(!goDown(i+1,j) && !goLeft(i+1,j) && mp(i+1,j)!=nxtPos && mp(i+1,j)!=StartPoint){
-                        change|=BanEdge(LeftLine);
-                        change|=BanEdge(DownLine);
-                    }
-                }
-                //-------both------
-                /**
-                 * . b .
-                 * b 1 |
-                 * . b .
-                */ 
+                //-------basic------
+                // * . b .
+                // * b 1 |
+                // * . b .
                 if(CheckLinkedEdge(TopLine) || (CheckBannedEdge(DownLine) && CheckBannedEdge(RightLine) && CheckBannedEdge(LeftLine))){
                     change|=BanEdge(DownLine);
                     change|=BanEdge(RightLine);
                     change|=BanEdge(LeftLine);
                     change|=LinkEdge(TopLine);
-
+                    continue;
                 }else if(CheckLinkedEdge(DownLine) || CheckBannedEdge(TopLine) && CheckBannedEdge(RightLine) && CheckBannedEdge(LeftLine)){
                     change|=BanEdge(TopLine);
                     change|=BanEdge(RightLine);
                     change|=BanEdge(LeftLine);
                     change|=LinkEdge(DownLine);
-
+                    continue;
                 }else if(CheckLinkedEdge(LeftLine) || (CheckBannedEdge(TopLine) && CheckBannedEdge(RightLine) && CheckBannedEdge(DownLine))){
                     change|=BanEdge(TopLine);
                     change|=BanEdge(DownLine);
                     change|=BanEdge(RightLine);
                     change|=LinkEdge(LeftLine);
-
+                    continue;
                 }else if(CheckLinkedEdge(RightLine) || (CheckBannedEdge(TopLine) && CheckBannedEdge(LeftLine) && CheckBannedEdge(DownLine))){
                     change|=BanEdge(TopLine);
                     change|=BanEdge(DownLine);
                     change|=BanEdge(LeftLine);
                     change|=LinkEdge(RightLine);
+                    continue;
+                }
+                //------ban------
+                // *   x
+                // * x . b .
+                // *   b 1
+                // *   .   .
+                if(!goUp(i,j) && !goLeft(i,j)){
+                    change|=BanEdge(TopLine);
+                    change|=BanEdge(LeftLine);
+                }
+                if(!goUp(i,j+1) && !goRight(i,j+1)){
+                    change|=BanEdge(TopLine);
+                    change|=BanEdge(RightLine);
+                }
+                if(!goDown(i+1,j+1) && !goRight(i+1,j+1)){
+                    change|=BanEdge(RightLine);
+                    change|=BanEdge(DownLine);
+                }
+                if(!goDown(i+1,j) && !goLeft(i+1,j)){
+                    change|=BanEdge(LeftLine);
+                    change|=BanEdge(DownLine);
                 }
             }
         }
@@ -199,46 +200,45 @@ bool mark_edge_around_two(){
         for(int j=1;j<=m;j++){
             if(Map[i][j]==2){
                 //--------basic---------
-                /**
-                 * . b .
-                 * | 2 |
-                 * . b .
-                 */
+                // . b .
+                // | 2 |
+                // . b .
                 if((CheckLinkedEdge(TopLine) && CheckLinkedEdge(RightLine)) || (CheckBannedEdge(LeftLine) && CheckBannedEdge(DownLine))){
                     change|=BanEdge(DownLine);
                     change|=BanEdge(LeftLine);
                     change|=LinkEdge(TopLine);
                     change|=LinkEdge(RightLine);
-
+                    continue;
                 }else if((CheckLinkedEdge(TopLine) && CheckLinkedEdge(LeftLine)) || (CheckBannedEdge(DownLine) && CheckBannedEdge(RightLine))){
                     change|=BanEdge(DownLine);
                     change|=BanEdge(RightLine);
                     change|=LinkEdge(TopLine);
                     change|=LinkEdge(LeftLine);
-
+                    continue;
                 }else if((CheckLinkedEdge(TopLine) && CheckLinkedEdge(DownLine)) || (CheckBannedEdge(RightLine) && CheckBannedEdge(LeftLine))){
                     change|=BanEdge(LeftLine);
                     change|=BanEdge(RightLine);
                     change|=LinkEdge(TopLine);
                     change|=LinkEdge(DownLine);
-
+                    continue;
                 }else if((CheckLinkedEdge(DownLine) && CheckLinkedEdge(LeftLine)) || (CheckBannedEdge(TopLine) && CheckBannedEdge(RightLine))){
                     change|=BanEdge(RightLine);
                     change|=BanEdge(TopLine);
                     change|=LinkEdge(DownLine);
                     change|=LinkEdge(LeftLine);
-
+                    continue;
                 }else if((CheckLinkedEdge(DownLine) && CheckLinkedEdge(RightLine)) || (CheckBannedEdge(TopLine) && CheckBannedEdge(LeftLine))){
                     change|=BanEdge(LeftLine);
                     change|=BanEdge(TopLine);
                     change|=LinkEdge(RightLine);
                     change|=LinkEdge(DownLine);
-
+                    continue;
                 }else if((CheckLinkedEdge(LeftLine) && CheckLinkedEdge(RightLine)) || (CheckBannedEdge(TopLine) && CheckBannedEdge(DownLine))){
                     change|=BanEdge(DownLine);
                     change|=BanEdge(TopLine);
                     change|=LinkEdge(LeftLine);
                     change|=LinkEdge(RightLine);
+                    continue;
                 }
             }
         }
@@ -252,11 +252,9 @@ bool mark_edge_around_three(){
         for(int j=1;j<=m;j++){
             if(Map[i][j]==3){
                 //------basic-------
-                /**
-                 * . - .
-                 * | 3 |
-                 * . b .
-                 */
+                // . - .
+                // | 3 |
+                // . b .
                 if(CheckBannedEdge(LeftLine) || (CheckLinkedEdge(TopLine) && CheckLinkedEdge(RightLine) && CheckLinkedEdge(DownLine))){
                     change|=BanEdge(LeftLine);
                     change|=LinkEdge(RightLine);
@@ -283,79 +281,52 @@ bool mark_edge_around_three(){
                     continue;
                 }
                 //-------ban--------
-                /**
-                 *   b   
-                 * - .   .
-                 *     3 
-                 *   .   .
-                 */
-                if(mp(i,j)==nxtPos){
-                    if(mp(i,j-1)==curPos) change|=BanEdge(LeftTopLine);
-                    if(mp(i-1,j)==curPos) change|=BanEdge(TopLeftLine);
-                }else if(mp(i,j+1)==nxtPos){
-                    if(mp(i-1,j+1)==curPos) change|=BanEdge(TopRightLine);
-                    if(mp(i,j+2)==curPos) change|=BanEdge(RightTopLine);
-                }else if(mp(i+1,j+1)==nxtPos){
-                    if(mp(i+1,j+2)==curPos) change|=BanEdge(RightDownLine);
-                    if(mp(i+2,j+1)==curPos) change|=BanEdge(DownRightLine);
-                }else if(mp(i+1,j)==nxtPos){
-                    if(mp(i+1,j-1)==curPos) change|=BanEdge(LeftDownLine);
-                    if(mp(i+2,j)==curPos) change|=BanEdge(DownLeftLine);
+                //   b   
+                // - .   .
+                //     3 
+                //   .   .
+                if(mp(i,j)==curPos){
+                    if(mp(i,j-1)==prePos) change|=BanEdge(LeftTopLine);
+                    if(mp(i-1,j)==prePos) change|=BanEdge(TopLeftLine);
+                }else if(mp(i,j+1)==curPos){
+                    if(mp(i-1,j+1)==prePos) change|=BanEdge(TopRightLine);
+                    if(mp(i,j+2)==prePos) change|=BanEdge(RightTopLine);
+                }else if(mp(i+1,j+1)==curPos){
+                    if(mp(i+1,j+2)==prePos) change|=BanEdge(RightDownLine);
+                    if(mp(i+2,j+1)==prePos) change|=BanEdge(DownRightLine);
+                }else if(mp(i+1,j)==curPos){
+                    if(mp(i+1,j-1)==prePos) change|=BanEdge(LeftDownLine);
+                    if(mp(i+2,j)==prePos) change|=BanEdge(DownLeftLine);
                 }
                 //-------link-------
-                /**
-                 * . -> .
-                 *   3  l
-                 * . l  .
-                 */
-                if(curPos!=StartPoint && CntlinkedEdge(i,j)==1){;
+                // . -> .
+                //   3  l
+                // . l  .
+                if(prePos!=StartPoint && CntlinkedEdge(i,j)==1){;
                     if(CheckLinkedEdge(TopLine)){
-                        if(curPos.S<nxtPos.S && CheckLinkedEdge(LeftLine)) continue;
-                        if(curPos.S>nxtPos.S && CheckLinkedEdge(RightLine)) continue;
-
                         change|=LinkEdge(DownLine);
+                        change|=LinkEdge(prePos.S<curPos.S?RightLine:LeftLine);
                         
-                        if(curPos.S<nxtPos.S) change|=LinkEdge(RightLine);
-                        else change|=LinkEdge(LeftLine);
-
                     }else if(CheckLinkedEdge(RightLine) ){
-                        if(curPos.F<nxtPos.F && CheckLinkedEdge(TopLine)) continue;
-                        if(curPos.F>nxtPos.F && CheckLinkedEdge(DownLine)) continue;
-
                         change|=LinkEdge(LeftLine);
-                        
-                        if(curPos.F<nxtPos.F) change|=LinkEdge(DownLine);
-                        else change|=LinkEdge(TopLine);
+                        change|=LinkEdge(prePos.F<curPos.F?DownLine:TopLine);
 
                     }else if(CheckLinkedEdge(LeftLine)){
-                        if(curPos.F<nxtPos.F && CheckLinkedEdge(TopLine)) continue;
-                        if(curPos.F>nxtPos.F && CheckLinkedEdge(DownLine)) continue;
-
                         change|=LinkEdge(RightLine);
-                        
-                        if(curPos.F<nxtPos.F) change|=LinkEdge(DownLine);
-                        else change|=LinkEdge(TopLine);
+                        change|=LinkEdge(prePos.F<curPos.F?DownLine:TopLine);
 
                     }else if(CheckLinkedEdge(DownLine)){
-                        if(curPos.S<nxtPos.S && CheckLinkedEdge(LeftLine)) continue;
-                        if(curPos.S>nxtPos.S && CheckLinkedEdge(RightLine)) continue;
-
                         change|=LinkEdge(TopLine);
-                        
-                        if(curPos.S<nxtPos.S) change|=LinkEdge(RightLine);
-                        else change|=LinkEdge(LeftLine);
+                        change|=LinkEdge(prePos.S<curPos.S?RightLine:LeftLine);
 
                     }
                 }
-                
                 //------both---------
-                /**
-                *   . l .
-                *     3
-                * b . l . b
-                *     3
-                *   . l .
-                */ 
+                //   . l .
+                //     3
+                // b . l . b
+                //     3
+                //   . l .
                 if(Map[i+1][j]==3){
                     change|=LinkEdge(TopLine);
                     change|=LinkEdge(DownLine);
@@ -363,13 +334,11 @@ bool mark_edge_around_three(){
                     change|=BanEdge(DownLeftLine);
                     change|=BanEdge(DownRightLine);
                 }
-                /**
-                *     b
-                * .   .   .
-                * l 3 l 3 l
-                * .   .   .
-                *     b
-                */
+                //     b
+                // .   .   .
+                // l 3 l 3 l
+                // .   .   .
+                //     b
                if(Map[i][j+1]==3){
                     change|=LinkEdge(LeftLine);
                     change|=LinkEdge(RightLine);
@@ -377,13 +346,10 @@ bool mark_edge_around_three(){
                     change|=BanEdge(RightTopLine);
                     change|=BanEdge(RightDownLine);
                 }
-                /**
-                 *       b
-                 *   . b . l . 
-                 *   .   l 3
-                 *   .   .   .
-                 */
-                
+                //     b
+                // . b . l . 
+                // .   l 3
+                // .   .   .
                 if((!goLeft(i,j) && !goUp(i,j)) || (CheckLinkedEdge(TopLine) && CheckLinkedEdge(LeftLine))){
                     change|=BanEdge(TopLeftLine);
                     change|=BanEdge(LeftTopLine);
@@ -428,39 +394,22 @@ bool mark_edge_around_point(){
 }
 
 int T=0;
-void PrintGraph();
-void PrintBan();
-void PrintLink();
-
-int dfsCnt=0;
-void debug(int l,int r){
-    dfsCnt++;
-    if(l<=dfsCnt && dfsCnt<=r){
-        cout << nxtPos.F << ' ' << nxtPos.S << '\n';
-        PrintGraph();
-        PrintBan();
-        // PrintLink();
-        
-        cout << "\n\n\n";   
-    }
-}
 
 void heuristic(){  //ban and link edge
     while(true){
         bool change=false;
-        // debug(0,10000);
         change|=mark_edge_around_zero();
         change|=mark_edge_around_one(); 
         change|=mark_edge_around_two();
         change|=mark_edge_around_three();
-        // change|=mark_edge_around_point();
+        change|=mark_edge_around_point();
         if(!change) break;
         
     }
 }
 
 void unheuristic(int Time){
-    while(command.top().time>=Time){ //remove operations which is done after Time
+    while(command.top().time>=Time){ //remove operations done after Time
         cmd item=command.top();command.pop();
         if(item.type==1){ //unban
             bannedEdge[item.x1][item.y1][item.x2][item.y2]=false;
@@ -472,18 +421,16 @@ void unheuristic(int Time){
     }
 }
 
-bool check(){  //check the generated Map is satisfy the requires or not
+bool check(){  //check the generated Map satisfy the requirements
     for(int i=1;i<=n;i++){
         for(int j=1;j<=m;j++){
-            if(Map[i][j]==-1) continue;
-            if(usedEdgeCnt[i][j]!=Map[i][j]) return false;
+            if(Map[i][j]==-1 && usedEdgeCnt[i][j]!=Map[i][j]) return false;
         }
     }
     return true;
 }
 
-
-void update_usedEdgeCnt(int x1,int y1,int x2,int y2,int val){
+void update_usedEdgeCnt(int x1,int y1,int x2,int y2,int val){  //calculate sum of used edges
     if(x1-x2!=0){  //vertical
         usedEdgeCnt[min(x1,x2)][y1]+=val;
         usedEdgeCnt[min(x1,x2)][y1-1]+=val;
@@ -499,14 +446,12 @@ int dfs(int x,int y){
     if(!isRoot && mp(x,y)==StartPoint) return check();
     isRoot=false;
 
-    // debug(0,10000);
-
     //go linked road first
     int LinkedRoadCnt=0;
     pii LinkedRoad;
-    for(int i=0;i<4;i++){  //cnt and record linked road
+    for(int i=0;i<4;i++){  //find linked road
         int nx=x+dx[i],ny=y+dy[i];
-        if(mp(nx,ny)==curPos) continue;
+        if(mp(nx,ny)==prePos) continue;
 
         if(CheckLinkedEdge(x,y,nx,ny)){
             if(CheckBannedEdge(x,y,nx,ny) || usedNode[nx][ny]) return false;
@@ -517,48 +462,45 @@ int dfs(int x,int y){
     if(LinkedRoadCnt > 2) return false;
     if(LinkedRoadCnt == 2 && mp(x,y)!=StartPoint){
         return false;
-        /**  only startPoint can have two linked roads
-         * . l .
-         * b 3 l
-         * . l . <- startPoint at here
-         */
+        //only startPoint can have two linked roads
+        // . l .
+        // b 3 l
+        // . l . <- start from here
     }
     if(LinkedRoadCnt > 0){  //go linked road only, beacuse linked means "need" to go
         int nx=LinkedRoad.F,ny=LinkedRoad.S;
         
-        curPos={x,y},nxtPos={nx,ny}; //set current node and next node to go
+        prePos={x,y},curPos={nx,ny}; //set previous node and current node
 
-        //add this edge and do ban or link operation
-        
+        //add this edge
         usedNode[nx][ny]=true;
         update_usedEdgeCnt(x,y,nx,ny,1);
+
         if(dfs(nx,ny)) return true;  //find legal Graph
-        update_usedEdgeCnt(x,y,nx,ny,-1);
-        //remove this edge and undo ban or link operation
-        
+
+        //remove this edge
         usedNode[nx][ny]=false;
-        
+        update_usedEdgeCnt(x,y,nx,ny,-1);
 
     }else{  //no linked road, go normal road
         for(int i=0;i<4;i++){
             int nx=x+dx[i],ny=y+dy[i];
             if(usedNode[nx][ny] || CheckBannedEdge(x,y,nx,ny)) continue;
 
-            curPos={x,y},nxtPos={nx,ny};
+            prePos={x,y},curPos={nx,ny};
 
-            linkedEdge[x][y][nx][ny]=true;
-            
             usedNode[nx][ny]=true;
+            linkedEdge[x][y][nx][ny]=true;
+            update_usedEdgeCnt(x,y,nx,ny,1);
             int CurTime=++Time;
             heuristic();
-            update_usedEdgeCnt(x,y,nx,ny,1);
-            if(dfs(nx,ny)) return true;
-            update_usedEdgeCnt(x,y,nx,ny,-1);
-            linkedEdge[x][y][nx][ny]=false;
             
-            usedNode[nx][ny]=false;
-            unheuristic(CurTime);
+            if(dfs(nx,ny)) return true;
 
+            usedNode[nx][ny]=false;
+            linkedEdge[x][y][nx][ny]=false;
+            update_usedEdgeCnt(x,y,nx,ny,-1);
+            unheuristic(CurTime);
         }
     }
     return false;
@@ -576,7 +518,7 @@ void ReadInput(){
 }
 
 void Initalization(){
-    //ban edge which is out of range
+    //ban edge out of range
     for(int i=1;i<=m+1;i++){
         BanEdge(1,i,0,i);
         BanEdge(n+1,i,n+2,i);
