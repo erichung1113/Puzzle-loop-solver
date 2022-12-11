@@ -1,6 +1,3 @@
-//a.out < ./TestCase/S1-input.txt && a.out < ./TestCase/S2-input.txt && a.out < ./TestCase/S3-input.txt && a.out < ./TestCase/S4-input.txt && a.out < ./TestCase/S5-input.txt
-
-
 #include <bits/stdc++.h>
 using namespace std;
 #pragma GCC optimize("O2","unroll-loops")
@@ -10,7 +7,7 @@ using namespace std;
 #define F first
 #define S second
 #define mp make_pair
-const int MAXN=10;
+const int MAXN=20;
 
 int dx[4]={0,1,0,-1};
 int dy[4]={1,0,-1,0};
@@ -245,6 +242,7 @@ bool mark_edge_around_two(){
     }
     return change;
 }
+int Target=18000;
 
 bool mark_edge_around_three(){
     bool change=false;
@@ -298,29 +296,56 @@ bool mark_edge_around_three(){
                     if(mp(i+1,j-1)==prePos) change|=BanEdge(LeftDownLine);
                     if(mp(i+2,j)==prePos) change|=BanEdge(DownLeftLine);
                 }
+                
                 //-------link-------
                 // . -> .
                 //   3  l
                 // . l  .
-                if(prePos!=StartPoint && CntlinkedEdge(i,j)==1){;
-                    if(CheckLinkedEdge(TopLine)){
-                        change|=LinkEdge(DownLine);
-                        change|=LinkEdge(prePos.S<curPos.S?RightLine:LeftLine);
-                        
-                    }else if(CheckLinkedEdge(RightLine) ){
-                        change|=LinkEdge(LeftLine);
-                        change|=LinkEdge(prePos.F<curPos.F?DownLine:TopLine);
+                if(prePos!=StartPoint){
+                    if(prePos.F==i && curPos.F==i && min(prePos.S,curPos.S)==j && !CheckLinkedEdge(prePos.S<curPos.S?LeftLine:RightLine)){
+                        if(prePos.S<curPos.S && !CheckLinkedEdge(LeftLine)){
+                            change|=LinkEdge(DownLine);
+                            change|=LinkEdge(RightLine);
+                        }
+                        if(prePos.S>curPos.S && !CheckLinkedEdge(RightLine)){
+                            change|=LinkEdge(DownLine);
+                            change|=LinkEdge(LeftLine);
+                        }
+                    }else if(prePos.S==j+1 && curPos.S==j+1 && min(prePos.F,curPos.F)==i && !CheckLinkedEdge(prePos.F<curPos.F?TopLine:DownLine)){
+                        if(prePos.F<curPos.F && !CheckLinkedEdge(TopLine)){
+                            change|=LinkEdge(LeftLine);
+                            change|=LinkEdge(DownLine);
+                        }
+                        if(prePos.F<curPos.F && !CheckLinkedEdge(DownLine)){
+                            change|=LinkEdge(LeftLine);
+                            change|=LinkEdge(TopLine);
+                        }
 
-                    }else if(CheckLinkedEdge(LeftLine)){
-                        change|=LinkEdge(RightLine);
-                        change|=LinkEdge(prePos.F<curPos.F?DownLine:TopLine);
+                        if(Time>=Target && Time<=Target+20)  cout << i+1 << j << i+1 << j+1  << '\n';
+                    }else if(prePos.S==j && curPos.S==j && min(prePos.F,curPos.F)==i && !CheckLinkedEdge(prePos.F<curPos.F?TopLine:DownLine)){
+                        if(prePos.F<curPos.F && !CheckLinkedEdge(TopLine)){
+                            change|=LinkEdge(RightLine);
+                            change|=LinkEdge(DownLine);
+                        }
+                        if(prePos.F<curPos.F && !CheckLinkedEdge(DownLine)){
+                            change|=LinkEdge(RightLine);
+                            change|=LinkEdge(TopLine);
+                        }
 
-                    }else if(CheckLinkedEdge(DownLine)){
-                        change|=LinkEdge(TopLine);
-                        change|=LinkEdge(prePos.S<curPos.S?RightLine:LeftLine);
+                    }else if(prePos.F==i+1 && curPos.F==i+1 && min(prePos.S,curPos.S)==j && !CheckLinkedEdge(prePos.S<curPos.S?LeftLine:RightLine)){
+                        if(prePos.S<curPos.S && !CheckLinkedEdge(LeftLine)){
+                            change|=LinkEdge(TopLine);
+                            change|=LinkEdge(RightLine);
+                        }
+                        if(prePos.S<curPos.S && !CheckLinkedEdge(RightLine)){
+                            change|=LinkEdge(TopLine);
+                            change|=LinkEdge(LeftLine);
+                        }
 
                     }
                 }
+                if(Time>=Target && Time<=Target+10) continue;
+
                 //------both---------
                 //   . l .
                 //     3
@@ -384,6 +409,9 @@ bool mark_edge_around_point(){
     bool change=false;
     for(int i=1;i<=n;i++){
         for(int j=1;j<=m;j++){
+            //   x  
+            // x . x
+            //   b 
             if(!goUp(i,j) && !goLeft(i,j) && !goRight(i,j)) change|=BanEdge(LeftLine);
             if(!goUp(i,j) && !goLeft(i,j) && !goDown(i,j)) change|=BanEdge(TopLine);
             if(!goDown(i,j) && !goLeft(i,j) && !goRight(i,j)) change|=BanEdge(LeftTopLine);
@@ -393,11 +421,16 @@ bool mark_edge_around_point(){
     return change;
 }
 
+void PrintGraph();
+void PrintBan();
+
 int T=0;
 
-void heuristic(){  //ban and link edge
+
+bool heuristic(){  //ban and link edge
     while(true){
         bool change=false;
+        // if(Time>=Target && Time<=Target+10) PrintGraph();
         change|=mark_edge_around_zero();
         change|=mark_edge_around_one(); 
         change|=mark_edge_around_two();
@@ -406,6 +439,22 @@ void heuristic(){  //ban and link edge
         if(!change) break;
         
     }
+    // if(Time>=Target && Time<=Target+10) PrintGraph();
+    for(int i=1;i<=n;i++){
+        for(int j=1;j<=m;j++){
+            if(CheckBannedEdge(TopLine) && CheckLinkedEdge(TopLine)) return false;
+            if(CheckBannedEdge(DownLine) && CheckLinkedEdge(DownLine)) return false;
+            if(CheckBannedEdge(LeftLine) && CheckLinkedEdge(LeftLine)) return false;
+            if(CheckBannedEdge(RightLine) && CheckLinkedEdge(RightLine)) return false;
+
+            if(CheckLinkedEdge(TopLine)+
+                CheckLinkedEdge(LeftLine)+
+                CheckLinkedEdge(TopLeftLine)+
+                CheckLinkedEdge(LeftTopLine)>2) return false;
+                // if(Time>=Target && Time<=Target+10) cout << "@" << i << j;
+        }
+    }
+    return true;
 }
 
 void unheuristic(int Time){
@@ -424,9 +473,9 @@ void unheuristic(int Time){
 bool check(){  //check the generated Map satisfy the requirements
     for(int i=1;i<=n;i++){
         for(int j=1;j<=m;j++){
-            if(Map[i][j]==-1 && usedEdgeCnt[i][j]!=Map[i][j]) return false;
+            if(Map[i][j]!=-1 && usedEdgeCnt[i][j]!=Map[i][j]) return false;
         }
-    }
+    } 
     return true;
 }
 
@@ -443,22 +492,31 @@ void update_usedEdgeCnt(int x1,int y1,int x2,int y2,int val){  //calculate sum o
 
 bool isRoot=true;
 int dfs(int x,int y){
+
+    // if(Time>=Target && Time<=Target+10){
+    //     PrintGraph();
+    //     // PrintBan();
+    //     cout << "\n\n\n";
+    // }
+
     if(!isRoot && mp(x,y)==StartPoint) return check();
     isRoot=false;
+    
 
+    if(Time>Target+10) return true;
     //go linked road first
     int LinkedRoadCnt=0;
     pii LinkedRoad;
     for(int i=0;i<4;i++){  //find linked road
         int nx=x+dx[i],ny=y+dy[i];
         if(mp(nx,ny)==prePos) continue;
-
         if(CheckLinkedEdge(x,y,nx,ny)){
             if(CheckBannedEdge(x,y,nx,ny) || usedNode[nx][ny]) return false;
             LinkedRoadCnt++;
             LinkedRoad=mp(nx,ny);
         }
     }
+    
     if(LinkedRoadCnt > 2) return false;
     if(LinkedRoadCnt == 2 && mp(x,y)!=StartPoint){
         return false;
@@ -475,12 +533,14 @@ int dfs(int x,int y){
         //add this edge
         usedNode[nx][ny]=true;
         update_usedEdgeCnt(x,y,nx,ny,1);
-
-        if(dfs(nx,ny)) return true;  //find legal Graph
+        int CurTime=++Time;
+        bool legal=heuristic();
+        if(legal && dfs(nx,ny)) return true;  //find legal Graph
 
         //remove this edge
         usedNode[nx][ny]=false;
         update_usedEdgeCnt(x,y,nx,ny,-1);
+        unheuristic(CurTime);
 
     }else{  //no linked road, go normal road
         for(int i=0;i<4;i++){
@@ -488,14 +548,15 @@ int dfs(int x,int y){
             if(usedNode[nx][ny] || CheckBannedEdge(x,y,nx,ny)) continue;
 
             prePos={x,y},curPos={nx,ny};
-
+            
             usedNode[nx][ny]=true;
             linkedEdge[x][y][nx][ny]=true;
             update_usedEdgeCnt(x,y,nx,ny,1);
             int CurTime=++Time;
-            heuristic();
-            
-            if(dfs(nx,ny)) return true;
+            bool legal=heuristic();
+            // if(Time>=Target && Time<=Target+20) cout << nx << ' ' << ny << ' ' << legal << '\n';
+        
+            if(legal && dfs(nx,ny)) return true;
 
             usedNode[nx][ny]=false;
             linkedEdge[x][y][nx][ny]=false;
@@ -511,8 +572,8 @@ void ReadInput(){
     while(cin >> s){
         m=s.size(),n++;
         for(int i=1;i<=m;i++){
-            if(s[i-1]=='.') Map[n][i]=-1;
-            else Map[n][i]=s[i-1]-'0';
+            if(isdigit(s[i-1])) Map[n][i]=s[i-1]-'0';
+            else Map[n][i]=-1;
         }
     }
 }
@@ -531,6 +592,8 @@ void Initalization(){
 }
 
 void FindSolution(){
+    Initalization();
+    
     //find start point : 3 > 2 > 1
     vector<pii> startPoint(4);
     for(int i=1;i<=n;i++){
@@ -606,32 +669,10 @@ void PrintBan(){
     }
 }
 
-void PrintLink(){ 
-    cout << "Link:\n";
-    for(int i=1;i<=m;i++){
-        cout << "." << (CheckLinkedEdge(1,i,1,i+1)?"___":"   ");
-    }
-    cout << ".\n";
-    for(int i=1;i<=n;i++){
-        for(int j=1;j<=m;j++){
-            cout << (CheckLinkedEdge(i,j,i+1,j)?'|':' ') << ' ' << (Map[i][j]!=-1?char(Map[i][j]+'0'):' ') << ' ';
-        }
-        cout << (CheckLinkedEdge(i,m+1,i+1,m+1)?'|':' ') << '\n';
-
-        for(int j=1;j<=m;j++){
-            cout << (CheckLinkedEdge(i,j,i+1,j)?'!':'.') << (CheckLinkedEdge(i+1,j,i+1,j+1)?"___":"   ");
-        }
-
-        cout << (CheckLinkedEdge(i+1,m+1,i,m+1)?'!':'.') << '\n';
-        
-    }
-}
-
 int main(){
     cin.sync_with_stdio(0),cin.tie(0);
     
     ReadInput();
-    Initalization();
     FindSolution();
     PrintGraph();
 }
