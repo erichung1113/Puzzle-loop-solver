@@ -37,7 +37,5 @@
 ```
 
 ## How To Use
-```
 put your input data into testcase.txt file
 > ./a.out < testcase.txt
-```
