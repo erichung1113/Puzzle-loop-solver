@@ -242,7 +242,6 @@ bool mark_edge_around_two(){
     }
     return change;
 }
-int Target=18000;
 
 bool mark_edge_around_three(){
     bool change=false;
@@ -296,7 +295,6 @@ bool mark_edge_around_three(){
                     if(mp(i+1,j-1)==prePos) change|=BanEdge(LeftDownLine);
                     if(mp(i+2,j)==prePos) change|=BanEdge(DownLeftLine);
                 }
-                
                 //-------link-------
                 // . -> .
                 //   3  l
@@ -321,7 +319,6 @@ bool mark_edge_around_three(){
                             change|=LinkEdge(TopLine);
                         }
 
-                        if(Time>=Target && Time<=Target+20)  cout << i+1 << j << i+1 << j+1  << '\n';
                     }else if(prePos.S==j && curPos.S==j && min(prePos.F,curPos.F)==i && !CheckLinkedEdge(prePos.F<curPos.F?TopLine:DownLine)){
                         if(prePos.F<curPos.F && !CheckLinkedEdge(TopLine)){
                             change|=LinkEdge(RightLine);
@@ -344,8 +341,6 @@ bool mark_edge_around_three(){
 
                     }
                 }
-                if(Time>=Target && Time<=Target+10) continue;
-
                 //------both---------
                 //   . l .
                 //     3
@@ -421,26 +416,19 @@ bool mark_edge_around_point(){
     return change;
 }
 
-void PrintGraph();
-void PrintBan();
-
-int T=0;
-
-
 bool heuristic(){  //ban and link edge
     while(true){
         bool change=false;
-        // if(Time>=Target && Time<=Target+10) PrintGraph();
         change|=mark_edge_around_zero();
         change|=mark_edge_around_one(); 
         change|=mark_edge_around_two();
         change|=mark_edge_around_three();
         change|=mark_edge_around_point();
         if(!change) break;
-        
     }
-    // if(Time>=Target && Time<=Target+10) PrintGraph();
-    for(int i=1;i<=n;i++){
+    
+    //check for legitimate
+    for(int i=1;i<=n;i++){  
         for(int j=1;j<=m;j++){
             if(CheckBannedEdge(TopLine) && CheckLinkedEdge(TopLine)) return false;
             if(CheckBannedEdge(DownLine) && CheckLinkedEdge(DownLine)) return false;
@@ -450,8 +438,7 @@ bool heuristic(){  //ban and link edge
             if(CheckLinkedEdge(TopLine)+
                 CheckLinkedEdge(LeftLine)+
                 CheckLinkedEdge(TopLeftLine)+
-                CheckLinkedEdge(LeftTopLine)>2) return false;
-                // if(Time>=Target && Time<=Target+10) cout << "@" << i << j;
+                CheckLinkedEdge(LeftTopLine) > 2) return false;
         }
     }
     return true;
@@ -475,7 +462,7 @@ bool check(){  //check the generated Map satisfy the requirements
         for(int j=1;j<=m;j++){
             if(Map[i][j]!=-1 && usedEdgeCnt[i][j]!=Map[i][j]) return false;
         }
-    } 
+    }
     return true;
 }
 
@@ -489,21 +476,11 @@ void update_usedEdgeCnt(int x1,int y1,int x2,int y2,int val){  //calculate sum o
     }
 }
 
-
 bool isRoot=true;
 int dfs(int x,int y){
-
-    // if(Time>=Target && Time<=Target+10){
-    //     PrintGraph();
-    //     // PrintBan();
-    //     cout << "\n\n\n";
-    // }
-
-    if(!isRoot && mp(x,y)==StartPoint) return check();
+    if(!isRoot && mp(x,y)==StartPoint) return check();   //get a circle
     isRoot=false;
-    
 
-    if(Time>Target+10) return true;
     //go linked road first
     int LinkedRoadCnt=0;
     pii LinkedRoad;
@@ -535,6 +512,7 @@ int dfs(int x,int y){
         update_usedEdgeCnt(x,y,nx,ny,1);
         int CurTime=++Time;
         bool legal=heuristic();
+
         if(legal && dfs(nx,ny)) return true;  //find legal Graph
 
         //remove this edge
@@ -554,7 +532,6 @@ int dfs(int x,int y){
             update_usedEdgeCnt(x,y,nx,ny,1);
             int CurTime=++Time;
             bool legal=heuristic();
-            // if(Time>=Target && Time<=Target+20) cout << nx << ' ' << ny << ' ' << legal << '\n';
         
             if(legal && dfs(nx,ny)) return true;
 
@@ -588,7 +565,7 @@ void Initalization(){
         BanEdge(i,1,i,0);
         BanEdge(i,m+1,i,m+2);
     }
-    heuristic(); //ban or link edge in graph
+    heuristic(); //ban or link edge in graph before finding solution
 }
 
 void FindSolution(){
@@ -609,8 +586,7 @@ void FindSolution(){
     queue<pii> q;
     for(int i=3;i>=1;i--){  //start from 3
         int x=startPoint[i].F,y=startPoint[i].S;
-        if(x && y){ 
-            
+        if(x && y){
             q.push(mp(x+1,y+1));
             q.push(mp(x+1,y));
             q.push(mp(x,y+1));
@@ -619,7 +595,6 @@ void FindSolution(){
         }
     }
     
-
     while(!q.empty()){
         StartPoint=q.front(); q.pop();
         isRoot=true;
@@ -628,7 +603,6 @@ void FindSolution(){
 }
 
 void PrintGraph(){ //print graph
-    // cout << "Graph:\n";
     for(int i=1;i<=m;i++){
         cout << "." << (CheckLinkedEdge(1,i,1,i+1)?"___":"   ");
     }
@@ -644,27 +618,6 @@ void PrintGraph(){ //print graph
         }
 
         cout << (CheckLinkedEdge(i+1,m+1,i,m+1)?'!':'.') << '\n';
-        
-    }
-}
-
-void PrintBan(){ 
-    cout << "Ban:\n";
-    for(int i=1;i<=m;i++){
-        cout << "." << (CheckBannedEdge(1,i,1,i+1)?"___":"   ");
-    }
-    cout << ".\n";
-    for(int i=1;i<=n;i++){
-        for(int j=1;j<=m;j++){
-            cout << (CheckBannedEdge(i,j,i+1,j)?'|':' ') << ' ' << (Map[i][j]!=-1?char(Map[i][j]+'0'):' ') << ' ';
-        }
-        cout << (CheckBannedEdge(i,m+1,i+1,m+1)?'|':' ') << '\n';
-
-        for(int j=1;j<=m;j++){
-            cout << (CheckBannedEdge(i,j,i+1,j)?'!':'.') << (CheckBannedEdge(i+1,j,i+1,j+1)?"___":"   ");
-        }
-
-        cout << (CheckBannedEdge(i+1,m+1,i,m+1)?'!':'.') << '\n';
         
     }
 }
